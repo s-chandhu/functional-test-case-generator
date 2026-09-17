@@ -1,7 +1,6 @@
 import os
-import tempfile
-import requests
 
+import requests
 import streamlit as st
 
 from document_parser import extract_text
@@ -19,14 +18,10 @@ st.set_page_config(
 st.title("🧪 Functional Test Case Generator")
 
 st.write(
-    "Upload a requirements document and generate functional "
-    "test cases automatically using AI."
+    "Upload a requirements document and generate "
+    "functional test cases using AI."
 )
 
-
-# ---------------------------------------------------------
-# Upload document
-# ---------------------------------------------------------
 
 uploaded_file = st.file_uploader(
     "Upload your requirement document",
@@ -40,40 +35,39 @@ if uploaded_file is not None:
         f"File uploaded successfully: {uploaded_file.name}"
     )
 
-    # -----------------------------------------------------
-    # Generate test cases
-    # -----------------------------------------------------
 
     if st.button(
         "🧪 Generate Functional Test Cases",
         type="primary"
     ):
 
-        temp_file_path = None
-
         try:
 
-            # Get file extension
+            # ------------------------------------------------
+            # Save uploaded file
+            # ------------------------------------------------
+
             file_extension = os.path.splitext(
                 uploaded_file.name
             )[1]
 
-            # Save uploaded file temporarily
-            with tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=file_extension
-            ) as temp_file:
+            temp_file_path = (
+                f"uploaded_document{file_extension}"
+            )
 
-                temp_file.write(
+            with open(
+                temp_file_path,
+                "wb"
+            ) as file:
+
+                file.write(
                     uploaded_file.getbuffer()
                 )
 
-                temp_file_path = temp_file.name
 
-
-            # -------------------------------------------------
+            # ------------------------------------------------
             # Extract requirements
-            # -------------------------------------------------
+            # ------------------------------------------------
 
             with st.spinner(
                 "📄 Reading requirements document..."
@@ -92,29 +86,29 @@ if uploaded_file is not None:
 
             else:
 
-                # -------------------------------------------------
-                # Show extracted requirements
-                # -------------------------------------------------
-
-                st.subheader(
-                    "📄 Extracted Requirements"
+                st.success(
+                    "Requirements extracted successfully."
                 )
 
+
+                # --------------------------------------------
+                # Show requirements
+                # --------------------------------------------
+
                 with st.expander(
-                    "View document content",
-                    expanded=False
+                    "📄 View Extracted Requirements"
                 ):
 
                     st.text_area(
-                        "Requirements",
+                        "Document Content",
                         extracted_text,
-                        height=300
+                        height=350
                     )
 
 
-                # -------------------------------------------------
-                # Generate AI test cases
-                # -------------------------------------------------
+                # --------------------------------------------
+                # AI generation
+                # --------------------------------------------
 
                 with st.spinner(
                     "🤖 AI is generating functional test cases..."
@@ -134,27 +128,26 @@ if uploaded_file is not None:
                 if not test_cases:
 
                     st.warning(
-                        "The AI did not generate any test cases."
+                        "No functional test cases were generated."
                     )
 
                 else:
 
-                    # -------------------------------------------------
-                    # Display results
-                    # -------------------------------------------------
-
                     st.success(
-                        f"Successfully generated "
-                        f"{len(test_cases)} functional test cases."
+                        f"Generated {len(test_cases)} "
+                        "functional test cases."
                     )
 
+
+                    # ----------------------------------------
+                    # Display results
+                    # ----------------------------------------
 
                     st.subheader(
                         "🧪 Generated Functional Test Cases"
                     )
 
 
-                    # Create a simplified table for display
                     display_rows = []
 
                     for test_case in test_cases:
@@ -206,9 +199,9 @@ if uploaded_file is not None:
                     )
 
 
-                    # -------------------------------------------------
-                    # Detailed test cases
-                    # -------------------------------------------------
+                    # ----------------------------------------
+                    # Detailed cases
+                    # ----------------------------------------
 
                     st.subheader(
                         "🔍 Test Case Details"
@@ -295,21 +288,19 @@ if uploaded_file is not None:
                                 )
 
 
-                    # -------------------------------------------------
-                    # Create Excel
-                    # -------------------------------------------------
+                    # ----------------------------------------
+                    # Excel
+                    # ----------------------------------------
 
-                    output_file = "generated_test_cases.xlsx"
+                    output_file = (
+                        "generated_test_cases.xlsx"
+                    )
 
                     create_excel(
                         test_cases,
                         output_file
                     )
 
-
-                    # -------------------------------------------------
-                    # Download Excel
-                    # -------------------------------------------------
 
                     with open(
                         output_file,
@@ -353,7 +344,7 @@ if uploaded_file is not None:
         finally:
 
             # Delete temporary uploaded file
-            if temp_file_path and os.path.exists(
+            if os.path.exists(
                 temp_file_path
             ):
 
