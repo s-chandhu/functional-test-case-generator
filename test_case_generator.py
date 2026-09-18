@@ -3,21 +3,29 @@ import os
 import re
 import time
 
+import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
 
 
-# Load environment variables from .env
+# Load local .env file
 load_dotenv()
 
 
 # Get Gemini API key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Streamlit Cloud uses st.secrets.
+# Local development uses .env.
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 
 if not GEMINI_API_KEY:
     raise ValueError(
-        "GEMINI_API_KEY not found in .env"
+        "GEMINI_API_KEY not found. "
+        "Add it to .env for local use or Streamlit Secrets for deployment."
     )
 
 
@@ -217,6 +225,7 @@ REQUIREMENTS:
     for attempt in range(max_retries):
 
         try:
+
             print(
                 f"\nCalling Gemini "
                 f"(attempt {attempt + 1}/{max_retries})...",
