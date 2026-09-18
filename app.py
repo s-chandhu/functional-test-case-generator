@@ -1,6 +1,5 @@
 import os
 
-import requests
 import streamlit as st
 
 from document_parser import extract_text
@@ -35,26 +34,26 @@ if uploaded_file is not None:
         f"File uploaded successfully: {uploaded_file.name}"
     )
 
-
     if st.button(
         "🧪 Generate Functional Test Cases",
         type="primary"
     ):
 
+        temp_file_path = None
+
         try:
 
-            # ------------------------------------------------
-            # Save uploaded file
-            # ------------------------------------------------
-
+            # Get uploaded file extension
             file_extension = os.path.splitext(
                 uploaded_file.name
-            )[1]
+            )[1].lower()
 
+            # Create temporary file path
             temp_file_path = (
                 f"uploaded_document{file_extension}"
             )
 
+            # Save uploaded file temporarily
             with open(
                 temp_file_path,
                 "wb"
@@ -64,10 +63,9 @@ if uploaded_file is not None:
                     uploaded_file.getbuffer()
                 )
 
-
-            # ------------------------------------------------
-            # Extract requirements
-            # ------------------------------------------------
+            # -----------------------------------
+            # STEP 1: Extract document text
+            # -----------------------------------
 
             with st.spinner(
                 "📄 Reading requirements document..."
@@ -76,7 +74,6 @@ if uploaded_file is not None:
                 extracted_text = extract_text(
                     temp_file_path
                 )
-
 
             if not extracted_text.strip():
 
@@ -90,11 +87,7 @@ if uploaded_file is not None:
                     "Requirements extracted successfully."
                 )
 
-
-                # --------------------------------------------
-                # Show requirements
-                # --------------------------------------------
-
+                # Show extracted requirements
                 with st.expander(
                     "📄 View Extracted Requirements"
                 ):
@@ -105,30 +98,32 @@ if uploaded_file is not None:
                         height=350
                     )
 
-
-                # --------------------------------------------
-                # AI generation
-                # --------------------------------------------
+                # -----------------------------------
+                # STEP 2: Generate test cases
+                # -----------------------------------
 
                 with st.spinner(
-                    "🤖 AI is generating functional test cases..."
+                    "🤖 Gemini is generating functional test cases..."
                 ):
 
                     result = generate_test_cases(
                         extracted_text
                     )
 
-
                 test_cases = result.get(
                     "test_cases",
                     []
                 )
 
+                # -----------------------------------
+                # STEP 3: Check generated cases
+                # -----------------------------------
 
                 if not test_cases:
 
                     st.warning(
-                        "No functional test cases were generated."
+                        "No functional software requirements "
+                        "were identified in the document."
                     )
 
                 else:
@@ -138,15 +133,13 @@ if uploaded_file is not None:
                         "functional test cases."
                     )
 
-
-                    # ----------------------------------------
-                    # Display results
-                    # ----------------------------------------
+                    # -----------------------------------
+                    # STEP 4: Display test case summary
+                    # -----------------------------------
 
                     st.subheader(
                         "🧪 Generated Functional Test Cases"
                     )
-
 
                     display_rows = []
 
@@ -191,28 +184,34 @@ if uploaded_file is not None:
                                 )
                         })
 
-
                     st.dataframe(
                         display_rows,
                         use_container_width=True,
                         hide_index=True
                     )
 
-
-                    # ----------------------------------------
-                    # Detailed cases
-                    # ----------------------------------------
+                    # -----------------------------------
+                    # STEP 5: Display detailed cases
+                    # -----------------------------------
 
                     st.subheader(
                         "🔍 Test Case Details"
                     )
 
-
                     for test_case in test_cases:
 
+                        test_case_id = test_case.get(
+                            "test_case_id",
+                            ""
+                        )
+
+                        test_scenario = test_case.get(
+                            "test_scenario",
+                            ""
+                        )
+
                         with st.expander(
-                            f"{test_case.get('test_case_id', '')} - "
-                            f"{test_case.get('test_scenario', '')}"
+                            f"{test_case_id} - {test_scenario}"
                         ):
 
                             st.write(
@@ -287,10 +286,9 @@ if uploaded_file is not None:
                                     f"{number}. {step}"
                                 )
 
-
-                    # ----------------------------------------
-                    # Excel
-                    # ----------------------------------------
+                    # -----------------------------------
+                    # STEP 6: Create Excel file
+                    # -----------------------------------
 
                     output_file = (
                         "generated_test_cases.xlsx"
@@ -301,7 +299,7 @@ if uploaded_file is not None:
                         output_file
                     )
 
-
+                    # Read Excel file
                     with open(
                         output_file,
                         "rb"
@@ -309,16 +307,21 @@ if uploaded_file is not None:
 
                         excel_data = file.read()
 
+                    # -----------------------------------
+                    # STEP 7: Download Excel
+                    # -----------------------------------
 
                     st.subheader(
                         "📥 Download"
                     )
 
-
                     st.download_button(
                         label="📥 Download Excel Test Cases",
+
                         data=excel_data,
+
                         file_name="functional_test_cases.xlsx",
+
                         mime=(
                             "application/vnd.openxmlformats-"
                             "officedocument.spreadsheetml.sheet"
@@ -326,26 +329,52 @@ if uploaded_file is not None:
                     )
 
 
-        except requests.exceptions.ConnectionError:
+        except RuntimeError as e:
 
-            st.error(
-                "Could not connect to Ollama. "
-                "Please make sure Ollama is running."
-            )
+            # -----------------------------------
+            # Gemini quota error
+            # -----------------------------------
+
+            error_message = str(e)
+
+            if "quota" in error_message.lower():
+
+                st.error(
+                    "⚠️ Gemini free-tier quota has been reached."
+                )
+
+                st.info(
+                    "Please try again after the Gemini quota "
+                    "resets or use a Gemini API project with "
+                    "available quota."
+                )
+
+            else:
+
+                st.error(
+                    f"An error occurred: {error_message}"
+                )
 
 
         except Exception as e:
 
+            # -----------------------------------
+            # Other errors
+            # -----------------------------------
+
             st.error(
-                f"An error occurred: {e}"
+                f"An unexpected error occurred: {e}"
             )
 
 
         finally:
 
             # Delete temporary uploaded file
-            if os.path.exists(
-                temp_file_path
+            if (
+                temp_file_path is not None
+                and os.path.exists(
+                    temp_file_path
+                )
             ):
 
                 os.remove(
